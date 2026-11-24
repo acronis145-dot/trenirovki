@@ -1,5 +1,5 @@
 // Собрано инструменты/сайт.mjs — вручную не править.
-const CACHE = 'trenirovki-0030bdc7caf4';
+const CACHE = 'trenirovki-8c1d85a670fd';
 const FILES = [
   "./",
   "data/pictures.mjs",
@@ -41,6 +41,7 @@ const FILES = [
   "logic/plan.mjs",
   "logic/records.mjs",
   "logic/rest.mjs",
+  "logic/restore.mjs",
   "logic/stats.mjs",
   "logic/storage.mjs",
   "logic/today.mjs",

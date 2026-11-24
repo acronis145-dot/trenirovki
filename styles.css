@@ -255,6 +255,8 @@ details.fold > ul { margin: 0; padding: 0 16px 16px 36px; display: grid; gap: 8p
 }
 .pic-search b { color: var(--accent); }
 
+.restore { display: grid; gap: 8px; }
+
 /* Карточка упражнения */
 .cues { margin: 8px 0 0; padding-left: 24px; display: grid; gap: 10px; }
 .card .eyebrow + p { margin-top: 8px; }

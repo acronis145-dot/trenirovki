@@ -1,8 +1,9 @@
 // Копия записей и экран «не могу прочитать записи».
 
 import { backupFile, lastBackupDate, markBackup } from '../logic/storage.mjs';
+import { readBackup, mergeBackup } from '../logic/restore.mjs';
 import { todayLocal } from '../logic/week.mjs';
-import { state, keeper, phone, refresh } from './state.mjs';
+import { state, keeper, phone, refresh, commit } from './state.mjs';
 import { h, topbar, fmtDate } from './dom.mjs';
 
 // На iPhone — меню «Поделиться» (сохранить в «Файлы», отправить в
@@ -26,6 +27,69 @@ async function giveFile(name, text) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return true;
+}
+
+// --- Восстановление из файла -------------------------------------------------
+// Два шага: выбрать файл → увидеть, что добавится → подтвердить. Копия
+// добавляется к записям телефона, ничего из телефона не удаляется
+// (logic/restore.mjs).
+let restore = null; // { name, incoming } | { error }
+
+function pickFile() {
+  const input = h('input', { type: 'file', accept: '.json,application/json', hidden: true });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.remove();
+    if (!file) return;
+    try {
+      restore = { name: file.name, incoming: readBackup(await file.text()) };
+    } catch (e) {
+      restore = { error: e.message };
+    }
+    refresh();
+    document.querySelector('.restore, .restore-error')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+  document.body.append(input);
+  input.click();
+}
+
+const count = (s) => `тренировок ${s.workouts.filter((w) => w.sets.length).length}, взвешиваний ${s.bodyWeights.length}`;
+
+function restoreBlock() {
+  if (!restore) {
+    return h('button', { class: 'secondary', type: 'button', onclick: pickFile }, 'Восстановить из файла');
+  }
+  if (restore.error) {
+    return h('div', { class: 'card restore-error' },
+      h('p', { class: 'banner error' }, restore.error),
+      h('button', { class: 'link-button', type: 'button', onclick: () => { restore = null; refresh(); } }, 'Понятно'));
+  }
+  let r;
+  try {
+    r = mergeBackup(state.store, restore.incoming);
+  } catch (e) {
+    restore = { error: e.message };
+    return restoreBlock();
+  }
+  const nothing = r.added.workouts + r.added.sets + r.added.bodyWeights === 0;
+  const cancel = h('button', { class: 'link-button', type: 'button', onclick: () => { restore = null; refresh(); } }, nothing ? 'Понятно' : 'Отмена');
+  return h('div', { class: 'card restore' },
+    h('div', { class: 'eyebrow' }, 'Файл копии'),
+    h('p', {}, restore.name),
+    h('p', { class: 'muted small' }, `В файле: ${count(restore.incoming)}.`),
+    nothing
+      ? h('p', {}, 'Всё из этого файла уже есть в телефоне.')
+      : h('p', {}, `Добавится: тренировок ${r.added.workouts}, подходов ${r.added.sets}, взвешиваний ${r.added.bodyWeights}. Из телефона ничего не удаляется.`),
+    r.conflicts.length ? h('p', { class: 'muted small' }, `Тренировок, которые в файле и в телефоне записаны по-разному: ${r.conflicts.length} — остаются как в телефоне.`) : null,
+    nothing ? null : h('button', {
+      class: 'primary', type: 'button',
+      onclick: () => {
+        if (!commit(mergeBackup(state.store, restore.incoming).store)) return;
+        restore = null;
+        refresh();
+      },
+    }, 'Добавить в телефон'),
+    cancel);
 }
 
 export function backupScreen() {
@@ -56,7 +120,11 @@ export function backupScreen() {
       h('li', {}, h('span', {}, 'Взвешиваний'), h('b', {}, store.bodyWeights.length)),
       h('li', {}, h('span', {}, 'Последняя копия'), h('b', {}, last ? fmtDate(last) : 'ещё не было'))),
     status,
-    h('div', { class: 'action-bar' }, button),
+    h('div', { class: 'eyebrow' }, 'Новый телефон или пропали записи'),
+    h('p', { class: 'muted small' }, 'Выбери сохранённый файл копии — записи из него добавятся к тем, что в телефоне.'),
+    restoreBlock(),
+    // Пока решается восстановление, вторая крупная кнопка только мешает.
+    restore ? null : h('div', { class: 'action-bar' }, button),
   ];
 }
 

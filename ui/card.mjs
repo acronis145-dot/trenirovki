@@ -1,8 +1,31 @@
-// Карточка упражнения: как делать, ошибки, когда остановиться, видео.
+// Карточка упражнения: рисунок, как делать, ошибки, когда остановиться, видео.
 
 import { EXERCISES, GROUPS } from '../data/program.mjs';
+import { PICTURES, CREDITS, pictureSearchUrl } from '../data/pictures.mjs';
 import { startText } from '../logic/plan.mjs';
 import { h, go, topbar, ltName } from './dom.mjs';
+
+// Начало и конец движения рядом. compact — маленький, на экране подхода:
+// нажатие открывает карточку. Рисунки чёрные на белом — на тёмном экране
+// лежат на светлой подложке, сами рисунки не меняем (условие лицензии).
+export function exercisePicture(id, { compact = false, href = null } = {}) {
+  const p = PICTURES[id];
+  const ex = EXERCISES[id];
+  if (!p) {
+    // Своего рисунка нет — ссылка на картинки этого упражнения в интернете.
+    const search = pictureSearchUrl(id);
+    return search ? h('a', { class: 'pic-search', href: search, target: '_blank', rel: 'noopener' },
+      h('b', {}, 'Как выглядит — картинки в интернете ↗'),
+      h('span', { class: 'muted small' }, 'Нужен интернет · своего рисунка пока нет')) : null;
+  }
+  const imgs = h('div', { class: 'pic-pair' },
+    p.files.map((src, i) => h('img', { src, alt: `${ex.ru}: ${i === 0 ? 'начало' : 'конец'} движения`, loading: 'lazy', decoding: 'async' })));
+  if (compact) return h('a', { class: 'pic compact', href, 'aria-label': `${ex.ru} — как делать` }, imgs);
+  const credit = CREDITS[p.credit];
+  return h('figure', { class: 'pic' }, imgs,
+    h('figcaption', {}, h('span', {}, 'Начало → конец'),
+      credit.url ? h('a', { href: credit.url, target: '_blank', rel: 'noopener' }, credit.text) : h('span', {}, credit.text)));
+}
 
 export function exerciseScreen(id) {
   const ex = EXERCISES[id];
@@ -13,6 +36,7 @@ export function exerciseScreen(id) {
     topbar(null, () => (history.length > 1 ? history.back() : go('#/'))),
     h('h1', {}, ex.ru),
     h('p', { class: 'muted' }, `${ltName(ex)} · ${GROUPS[ex.group].name}`),
+    exercisePicture(id),
     section('Как делать', h('ol', { class: 'cues' }, ex.cues.map((c) => h('li', {}, c)))),
     section('Частые ошибки', h('p', {}, ex.mistakes)),
     h('div', { class: 'card stop' }, h('div', { class: 'eyebrow' }, 'Когда остановиться'), h('p', {}, ex.stop)),

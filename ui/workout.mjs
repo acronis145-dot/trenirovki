@@ -8,7 +8,8 @@ import { nextSetDefaults, nextExercise, setsOf } from '../logic/workout.mjs';
 import { restAfter, restLeft, clock } from '../logic/rest.mjs';
 import { todayLocal } from '../logic/week.mjs';
 import { state, commit, phone, refresh } from './state.mjs';
-import { h, go, topbar, list, num, fmtSet, fmtWeight, ltName, minutesText, parseNum } from './dom.mjs';
+import { h, go, topbar, list, num, fmtSet, fmtWeight, minutesText, parseNum } from './dom.mjs';
+import { exercisePicture } from './card.mjs';
 
 // --- Отдых -----------------------------------------------------------------
 // Конец отдыха — время на часах, а не счётчик: таймер верен и после того,
@@ -224,6 +225,7 @@ export function setScreen(sessionId, exerciseId) {
     topbar(null, `#/w/${sessionId}`, elapsedText(workout)),
     segments(plan, workout),
     h('h1', {}, ex.ru),
+    exercisePicture(exerciseId, { compact: true, href: `#/x/${exerciseId}` }),
     h('p', { class: 'muted' }, complete
       ? `Все ${planned.sets} подхода по плану сделаны`
       : `Подход ${doneSets.length + 1} из ${planned.sets} · цель ${planned.reps} повторов`),

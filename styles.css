@@ -242,6 +242,19 @@ details.fold > ul { margin: 0; padding: 0 16px 16px 36px; display: grid; gap: 8p
 .delta { font-weight: 700; color: var(--muted); white-space: nowrap; }
 .delta.up { color: var(--up); }
 
+/* Рисунок упражнения: начало и конец на светлой подложке */
+.pic { margin: 0; display: grid; gap: 6px; }
+.pic-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #ffffff; border-radius: 16px; padding: 8px; }
+.pic-pair img { width: 100%; height: 180px; object-fit: contain; display: block; }
+.pic.compact .pic-pair img { height: 96px; }
+.pic figcaption { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.pic figcaption a { color: var(--muted); }
+.pic-search {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: var(--tap);
+  background: var(--surface); border-radius: 16px; padding: 10px 16px; text-decoration: none;
+}
+.pic-search b { color: var(--accent); }
+
 /* Карточка упражнения */
 .cues { margin: 8px 0 0; padding-left: 24px; display: grid; gap: 10px; }
 .card .eyebrow + p { margin-top: 8px; }

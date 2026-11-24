@@ -1,5 +1,5 @@
 // Собрано инструменты/сайт.mjs — вручную не править.
-const CACHE = 'trenirovki-329ee60c95b7';
+const CACHE = 'trenirovki-119db8611a8b';
 const FILES = [
   "./",
   "data/program.mjs",
@@ -9,13 +9,23 @@ const FILES = [
   "index.html",
   "logic/plan.mjs",
   "logic/records.mjs",
+  "logic/rest.mjs",
+  "logic/stats.mjs",
   "logic/storage.mjs",
   "logic/today.mjs",
   "logic/week.mjs",
   "logic/workout.mjs",
   "manifest.webmanifest",
   "styles.css",
-  "ui/main.mjs"
+  "ui/backup.mjs",
+  "ui/card.mjs",
+  "ui/chart.mjs",
+  "ui/dom.mjs",
+  "ui/main.mjs",
+  "ui/progress.mjs",
+  "ui/start.mjs",
+  "ui/state.mjs",
+  "ui/workout.mjs"
 ];
 
 self.addEventListener('install', (e) => {

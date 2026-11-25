@@ -1,19 +1,29 @@
-// Рисунки упражнений: начало и конец движения. Только то, что можно
-// законно показывать в открытом приложении и что точно совпадает с
-// упражнением (Р-37). Сейчас — Everkinetic (https://github.com/everkinetic/data),
-// CC BY-SA 4.0: авторство обязательно, рисунки не меняем. Чужие картинки
-// «из интернета» сюда не попадают, даже если их выдают за свободные
-// (free-exercise-db, часть картинок wger). Упражнения без точного рисунка
-// остаются без него — до фото тренажёров из её зала.
+// Рисунки упражнений: начало и конец движения, а если законного кадра
+// начала нет — один кадр (phases). Только то, что можно законно показывать
+// в открытом приложении и что точно совпадает с упражнением (Р-37, Р-39).
+// Everkinetic (https://github.com/everkinetic/data), CC BY-SA 4.0: рисунки
+// не меняем. Фото с Викисклада — лицензия сверена на странице файла; ссылка
+// в подписи ведёт на неё (там автор, источник и лицензия — так CC 4.0
+// разрешает указывать авторство); изменение фото названо в подписи. Чужие
+// картинки «из интернета» сюда не попадают, даже если их выдают за
+// свободные (free-exercise-db, часть картинок wger).
 
 export const CREDITS = {
   everkinetic: {
     text: 'Рисунок: Everkinetic, CC BY-SA 4.0',
     url: 'https://creativecommons.org/licenses/by-sa/4.0/deed.ru',
   },
+  anchovyAsh: {
+    text: 'Фото: AnchovyAsh, CC BY-SA 4.0, обрезано',
+    url: 'https://commons.wikimedia.org/wiki/File:Curtis_jones_training.jpg',
+  },
 };
 
-const ek = (id, ext = 'svg') => ({ files: [`images/${id}-1.${ext}`, `images/${id}-2.${ext}`], credit: 'everkinetic' });
+export const PHASES = ['начало', 'конец'];
+
+const ek = (id, ext = 'svg') => ({
+  files: [`images/${id}-1.${ext}`, `images/${id}-2.${ext}`], phases: PHASES, credit: 'everkinetic',
+});
 
 export const PICTURES = {
   legPress: ek('legPress'),
@@ -31,6 +41,7 @@ export const PICTURES = {
   latPulldown: ek('latPulldown', 'jpg'),
   tricepsPushdown: ek('tricepsPushdown'),
   romanianDeadlift: ek('romanianDeadlift'),
+  facePull: { files: ['images/facePull.jpg'], phases: ['конец'], credit: 'anchovyAsh' },
 };
 
 // Упражнения без точного рисунка: ссылка на поиск картинок в интернете —
@@ -39,7 +50,6 @@ export const PICTURES = {
 // тренажёры.
 export const PICTURE_SEARCH = {
   reverseFly: 'reverse pec deck machine rear delt fly',
-  facePull: 'cable face pull rope exercise',
   hipThrustMachine: 'hip thrust machine exercise',
   abCrunchMachine: 'ab crunch machine exercise',
   backExtensionMachine: 'seated back extension machine exercise',

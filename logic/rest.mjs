@@ -8,10 +8,10 @@ export const REST_SECONDS = 90;
 // Сколько отдыхать после только что записанного подхода. Без отдыха —
 // только переход от первого упражнения пары ко второму; после второго, после
 // одиночного и перед следующим упражнением — REST_SECONDS.
-export function restAfter(plan, workout, exerciseId) {
+export function restAfter(plan, workout, exerciseId, skipped = new Set()) {
   const item = plan.items.find((it) => it.exercises.some((e) => e.id === exerciseId));
   const [first, second] = item?.exercises ?? [];
-  const toPartner = second && exerciseId === first.id && nextExercise(plan, workout, exerciseId) === second.id;
+  const toPartner = second && exerciseId === first.id && nextExercise(plan, workout, exerciseId, skipped) === second.id;
   return toPartner ? 0 : REST_SECONDS;
 }
 

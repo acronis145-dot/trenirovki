@@ -1,6 +1,6 @@
 // Карточка упражнения: рисунок, как делать, ошибки, когда остановиться, видео.
 
-import { EXERCISES, GROUPS } from '../data/program.mjs';
+import { EXERCISES, GROUPS, BACKUPS } from '../data/program.mjs';
 import { PICTURES, CREDITS, pictureSearchUrl } from '../data/pictures.mjs';
 import { startText } from '../logic/plan.mjs';
 import { h, go, topbar, ltName } from './dom.mjs';
@@ -29,6 +29,24 @@ export function exercisePicture(id, { compact = false, href = null } = {}) {
       credit.url ? h('a', { href: credit.url, target: '_blank', rel: 'noopener' }, credit.text) : h('span', {}, credit.text)));
 }
 
+// Карточки упражнений-ссылки: куда идти, если тренажёр занят или сломан, и
+// чьё это запасное (Р-40).
+const cardLinks = (ids) => h('div', { class: 'rows' }, ids.map((x) => h('a', { class: 'row', href: `#/x/${x}` }, h('b', {}, EXERCISES[x].ru), h('span', { class: 'row-end muted' }, '›'))));
+
+function swapCard(id) {
+  const backups = BACKUPS[id];
+  if (backups) {
+    return h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Если тренажёр занят или сломан'),
+      backups.length ? cardLinks(backups) : null,
+      h('p', { class: 'muted small' }, backups.length
+        ? 'На экране подхода приложение предложит то, что подходит к сегодняшней тренировке. Ничего не подходит — пропусти.'
+        : 'Замены нет — пропусти, это не страшно.'));
+  }
+  // Только запасное (не основное ни в одной тренировке): чьё оно.
+  const mains = Object.keys(BACKUPS).filter((m) => BACKUPS[m].includes(id));
+  return mains.length ? h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Запасное упражнение вместо'), cardLinks(mains)) : null;
+}
+
 export function exerciseScreen(id) {
   const ex = EXERCISES[id];
   if (!ex) return null;
@@ -42,7 +60,8 @@ export function exerciseScreen(id) {
     section('Как делать', h('ol', { class: 'cues' }, ex.cues.map((c) => h('li', {}, c)))),
     section('Частые ошибки', h('p', {}, ex.mistakes)),
     h('div', { class: 'card stop' }, h('div', { class: 'eyebrow' }, 'Когда остановиться'), h('p', {}, ex.stop)),
-    ex.fallback ? section('Если тренажёра нет', h('p', {}, ex.fallback)) : null,
+    ex.fallback ? section('Если чего-то нет в зале', h('p', {}, ex.fallback)) : null,
+    swapCard(id),
     section('Вес', h('p', {}, `Старт: ${startText(ex)}`), h('p', { class: 'muted small' }, `Последний у тренера: ${ex.last}`)),
     h('div', { class: 'action-bar' },
       h('a', { class: 'primary', href: video, target: '_blank', rel: 'noopener' }, 'Видео на YouTube'),

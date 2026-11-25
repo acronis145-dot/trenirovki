@@ -1,10 +1,11 @@
 // Экраны тренировки: список упражнений и подход (вес, повторы, «Сделано»),
-// таймер отдыха, отмена последнего подхода (Р-28), окончание тренировки.
+// таймер отдыха, отмена последнего подхода (Р-28), замена или пропуск
+// упражнения, если тренажёр занят или сломан (Р-40), окончание тренировки.
 
 import { SESSIONS, EXERCISES, WARMUP, COOLDOWN, RULES } from '../data/program.mjs';
 import { planSession, lastSets } from '../logic/plan.mjs';
 import { startWorkout, recordSet, undoLastSet, finishWorkout, activeWorkout } from '../logic/records.mjs';
-import { nextSetDefaults, nextExercise, setsOf } from '../logic/workout.mjs';
+import { nextSetDefaults, nextExercise, afterSkip, setsOf } from '../logic/workout.mjs';
 import { restAfter, restLeft, clock } from '../logic/rest.mjs';
 import { todayLocal } from '../logic/week.mjs';
 import { state, commit, phone, refresh } from './state.mjs';
@@ -47,6 +48,23 @@ function showRest(el) {
 // (иначе сбивался бы ввод веса с клавиатуры).
 const tick = () => document.querySelectorAll('[data-rest]').forEach(showRest);
 setInterval(tick, 500);
+
+// --- Пропущенные сегодня ---------------------------------------------------
+// Упражнения, пропущенные в этой тренировке, — подсказка для порядка
+// переходов, а не запись: хранится отдельно и только на сегодняшнюю
+// тренировку; сбой здесь ничего не ломает (в худшем случае приложение ещё
+// раз предложит пропущенное).
+const SKIP_KEY = 'eva-trainings.skip';
+const skipKey = (date, sessionId) => `${date}:${sessionId}`;
+function skippedToday(date, sessionId) {
+  try {
+    const v = JSON.parse(phone.getItem(SKIP_KEY) ?? 'null');
+    return new Set(v?.key === skipKey(date, sessionId) && Array.isArray(v.ids) ? v.ids : []);
+  } catch { return new Set(); }
+}
+function saveSkipped(date, sessionId, ids) {
+  try { phone.setItem(SKIP_KEY, JSON.stringify({ key: skipKey(date, sessionId), ids: [...ids] })); } catch { /* подсказка не сохранилась */ }
+}
 
 // Экран не гаснет, пока открыта тренировка. Safari может отказать — тогда
 // экран гаснет как обычно, на записи это не влияет.
@@ -96,18 +114,20 @@ function undoLine(workout) {
 }
 
 // --- Экран: тренировка -----------------------------------------------------
-function exerciseRow(sessionId, e, workout) {
+function exerciseRow(sessionId, e, workout, skipped) {
   const ex = EXERCISES[e.id];
   const today = setsOf(workout, e.id);
   const done = today.length;
   const complete = done >= e.sets;
+  const skip = !done && skipped.has(e.id);
   const kg = today.at(-1)?.weightKg ?? e.weightKg;
+  const status = skip ? 'пропущено сегодня' : done > 0 ? `${complete ? '✓ ' : ''}сделано ${done} из ${e.sets}` : e.reason;
   return h('button', {
-    class: `exercise${complete ? ' complete' : done ? ' started' : ''}`, type: 'button', onclick: () => go(`#/w/${sessionId}/${e.id}`),
+    class: `exercise${complete ? ' complete' : done ? ' started' : skip ? ' skipped' : ''}`, type: 'button', onclick: () => go(`#/w/${sessionId}/${e.id}`),
   },
   h('span', { class: 'name' }, ex.ru),
   h('span', { class: 'dose' }, h('b', {}, `${e.sets} × ${e.reps}`), h('span', {}, kg === null ? 'подбор' : fmtWeight(ex, kg))),
-  h('span', { class: 'reason' }, done > 0 ? `${complete ? '✓ ' : ''}сделано ${done} из ${e.sets}` : e.reason));
+  h('span', { class: 'reason' }, e.replaces ? `${status} · вместо: ${EXERCISES[e.replaces].ru}` : status));
 }
 
 // Закончить — в два нажатия: после этого подходы уже не отменить (Р-28), а
@@ -130,6 +150,7 @@ export function workoutScreen(id) {
   const today = todayLocal();
   const workout = activeWorkout(state.store, today, id);
   const plan = planSession(state.store, id, today, workout?.id);
+  const skipped = skippedToday(today, id);
   return [
     topbar(null, '#/', elapsedText(workout) ?? minutesText(s)),
     h('h1', {}, s.title),
@@ -139,8 +160,8 @@ export function workoutScreen(id) {
     h('details', { class: 'card fold' }, h('summary', {}, 'Разминка · ≈ 10 мин'), list(WARMUP)),
     h('ul', { class: 'exercise-list' }, plan.items.map((it) => h('li', {},
       it.pair
-        ? h('div', { class: 'pair' }, h('span', { class: 'eyebrow' }, 'Пара — по очереди, отдых после второго'), it.exercises.map((e) => exerciseRow(id, e, workout)))
-        : exerciseRow(id, it.exercises[0], workout)))),
+        ? h('div', { class: 'pair' }, h('span', { class: 'eyebrow' }, 'Пара — по очереди, отдых после второго'), it.exercises.map((e) => exerciseRow(id, e, workout, skipped)))
+        : exerciseRow(id, it.exercises[0], workout, skipped)))),
     h('details', { class: 'card fold' }, h('summary', {}, 'Растяжка · ≈ 8 мин'), list(COOLDOWN)),
     h('details', { class: 'card fold' }, h('summary', {}, 'Правила'), list(RULES)),
     // Не прилипает к низу: список упражнений важнее, а закончить — один раз в конце.
@@ -180,14 +201,39 @@ function deltaBadge(previous, kg) {
   return h('span', { class: d > 0 ? 'delta up' : 'delta' }, `${d > 0 ? '↑ +' : '↓ '}${num(Math.abs(d))}`);
 }
 
+// Тренажёр занят или сломан: запасные на это место и «пропустить». Запасное
+// займёт место с первым же записанным подходом (planSession).
+function swapSection(sessionId, plan, workout, slot, today) {
+  const skip = h('button', {
+    class: 'row', type: 'button',
+    onclick: () => {
+      const skipped = skippedToday(today, sessionId).add(slot.id);
+      saveSkipped(today, sessionId, skipped);
+      const next = afterSkip(plan, workout, slot.id, skipped);
+      go(next ? `#/w/${sessionId}/${next}` : `#/w/${sessionId}`);
+    },
+  }, h('span', {}, h('b', {}, 'Пропустить сегодня'), h('br'), h('span', { class: 'muted small' }, 'Перейти к следующему упражнению')));
+  return h('details', { class: 'card fold swap' },
+    h('summary', {}, 'Тренажёр занят или сломан'),
+    h('div', { class: 'rows' },
+      slot.alternatives.map((a) => h('a', { class: 'row', href: `#/w/${sessionId}/${a.id}` },
+        h('span', {}, h('b', {}, EXERCISES[a.id].ru), h('br'), h('span', { class: 'muted small' }, a.reason)),
+        h('span', { class: 'row-end' }, `${a.sets} × ${a.reps}`))),
+      skip));
+}
+
 export function setScreen(sessionId, exerciseId) {
   const ex = EXERCISES[exerciseId];
   if (!SESSIONS[sessionId] || !ex) return null;
   const today = todayLocal();
   const workout = activeWorkout(state.store, today, sessionId);
   const plan = planSession(state.store, sessionId, today, workout?.id);
-  const planned = plan.items.flatMap((it) => it.exercises).find((e) => e.id === exerciseId);
-  if (!planned) return null;
+  // Место в тренировке: само упражнение или то, чьим запасным оно открыто.
+  const items = plan.items.flatMap((it) => it.exercises);
+  const slot = items.find((e) => e.id === exerciseId) ?? items.find((e) => e.alternatives.some((a) => a.id === exerciseId));
+  if (!slot) return null;
+  const planned = slot.id === exerciseId ? slot : slot.alternatives.find((a) => a.id === exerciseId);
+  const instead = planned === slot ? slot.replaces : slot.id;
 
   const doneSets = setsOf(workout, exerciseId);
   const key = `${workout?.id ?? 'new'}:${exerciseId}:${doneSets.length}`;
@@ -206,10 +252,14 @@ export function setScreen(sessionId, exerciseId) {
       }
       s = recordSet(s, w.id, { exercise: exerciseId, weightKg: draft.weightKg, reps: draft.reps, at: new Date().toISOString() });
       if (!commit(s)) return;
+      const skipped = skippedToday(today, sessionId);
+      if (skipped.delete(exerciseId)) saveSkipped(today, sessionId, skipped);
       const after = activeWorkout(state.store, today, sessionId);
-      const rest = restAfter(plan, after, exerciseId);
+      // План заново: первый подход запасного делает его хозяином места.
+      const planAfter = planSession(state.store, sessionId, today, after.id);
+      const rest = restAfter(planAfter, after, exerciseId, skipped);
       setRest(rest ? Date.now() + rest * 1000 : 0);
-      const next = nextExercise(plan, after, exerciseId);
+      const next = nextExercise(planAfter, after, exerciseId, skipped);
       if (next === exerciseId) refresh();
       else go(next ? `#/w/${sessionId}/${next}` : `#/w/${sessionId}`);
     },
@@ -225,6 +275,7 @@ export function setScreen(sessionId, exerciseId) {
     topbar(null, `#/w/${sessionId}`, elapsedText(workout)),
     segments(plan, workout),
     h('h1', {}, ex.ru),
+    instead ? h('p', { class: 'muted' }, `Вместо: ${EXERCISES[instead].ru}`) : null,
     exercisePicture(exerciseId, { compact: true, href: `#/x/${exerciseId}` }),
     h('p', { class: 'muted' }, complete
       ? `Все ${planned.sets} подхода по плану сделаны`
@@ -241,6 +292,7 @@ export function setScreen(sessionId, exerciseId) {
     doneSets.length ? h('div', { class: 'chips' }, h('span', { class: 'eyebrow' }, 'Сегодня'),
       doneSets.map((x) => h('span', { class: 'chip static' }, fmtSet(x)))) : null,
     h('button', { class: 'link-button', type: 'button', onclick: () => go(`#/x/${exerciseId}`) }, 'Как делать'),
+    planned === slot && !complete ? swapSection(sessionId, plan, workout, slot, today) : null,
     h('div', { class: 'action-bar' },
       undoLine(workout),
       complete ? h('a', { class: 'primary', href: `#/w/${sessionId}` }, 'К списку упражнений') : null,

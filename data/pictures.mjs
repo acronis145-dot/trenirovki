@@ -42,6 +42,12 @@ export const PICTURES = {
   tricepsPushdown: ek('tricepsPushdown'),
   romanianDeadlift: ek('romanianDeadlift'),
   facePull: { files: ['images/facePull.jpg'], phases: ['конец'], credit: 'anchovyAsh' },
+  // Запасные (Р-40). Жим ногами под углом — тот же рисунок, что у жима ногами.
+  legPress45: ek('legPress'),
+  legPressCalfRaise: ek('legPressCalfRaise'),
+  cableFly: ek('cableFly'),
+  straightBarPushdown: ek('straightBarPushdown'),
+  cableCrunchSeated: ek('cableCrunchSeated'),
 };
 
 // Упражнения без точного рисунка: ссылка на поиск картинок в интернете —
@@ -53,6 +59,14 @@ export const PICTURE_SEARCH = {
   hipThrustMachine: 'hip thrust machine exercise',
   abCrunchMachine: 'ab crunch machine exercise',
   backExtensionMachine: 'seated back extension machine exercise',
+  // Запасные: у Everkinetic рисунка нет или он не совпадает (без троса, кадры
+  // одинаковые, скамья без спинки).
+  cableKickback: 'cable glute kickback ankle strap exercise',
+  cableAbduction: 'standing cable hip abduction exercise',
+  cableAdduction: 'standing cable hip adduction exercise',
+  dbShoulderPress: 'seated dumbbell shoulder press back support exercise',
+  cableReverseFly: 'standing reverse cable fly rear delt exercise',
+  dbRow: 'one arm dumbbell row bench exercise',
 };
 
 export const pictureSearchUrl = (id) => (PICTURE_SEARCH[id]

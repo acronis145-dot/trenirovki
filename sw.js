@@ -1,5 +1,5 @@
 // Собрано инструменты/сайт.mjs — вручную не править.
-const CACHE = 'trenirovki-b7119028c2f1';
+const CACHE = 'trenirovki-8d41d9c09287';
 const FILES = [
   "./",
   "data/pictures.mjs",
@@ -11,6 +11,10 @@ const FILES = [
   "images/abduction-2.svg",
   "images/adduction-1.svg",
   "images/adduction-2.svg",
+  "images/cableCrunchSeated-1.svg",
+  "images/cableCrunchSeated-2.svg",
+  "images/cableFly-1.svg",
+  "images/cableFly-2.svg",
   "images/calfRaise-1.svg",
   "images/calfRaise-2.svg",
   "images/chestFly-1.jpg",
@@ -30,12 +34,16 @@ const FILES = [
   "images/legExtension-2.svg",
   "images/legPress-1.svg",
   "images/legPress-2.svg",
+  "images/legPressCalfRaise-1.svg",
+  "images/legPressCalfRaise-2.svg",
   "images/romanianDeadlift-1.svg",
   "images/romanianDeadlift-2.svg",
   "images/seatedRow-1.svg",
   "images/seatedRow-2.svg",
   "images/shoulderPress-1.jpg",
   "images/shoulderPress-2.jpg",
+  "images/straightBarPushdown-1.svg",
+  "images/straightBarPushdown-2.svg",
   "images/tricepsPushdown-1.svg",
   "images/tricepsPushdown-2.svg",
   "index.html",

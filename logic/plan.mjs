@@ -9,7 +9,7 @@
 // - Приложение само вес никогда не снижает: в неделю с одной тренировкой
 //   тяжесть сохраняется (поддержка формы держится на ней).
 
-import { SESSIONS, EXERCISES } from '../data/program.mjs';
+import { SESSIONS, EXERCISES, BACKUPS } from '../data/program.mjs';
 import { daysBetween } from './week.mjs';
 
 export const INTRO_DAYS = 14;
@@ -62,20 +62,44 @@ export function suggestWeight(store, exerciseId, targetReps, date, intro, curren
   return { weightKg: base, reason: 'как в прошлый раз' };
 }
 
-// [{ pair: да/нет, exercises: [{ id, sets, reps, weightKg, reason }] }]
+const idsOf = (session) => session.items.flatMap((it) => (it.pair ?? [it]).map((e) => e.id));
+
+// Запасные упражнения для места exerciseId в этой тренировке (Р-40). Каждое
+// запасное в тренировке может занять только одно место — иначе по записям
+// не понять, вместо чего оно сделано. Поэтому: то, что в тренировке и так
+// стоит, не предлагается; запасное, нужное двум местам, достаётся тому, у
+// кого оно выше в списке, при равенстве — тому, что раньше в тренировке.
+export function backupsFor(sessionId, exerciseId) {
+  const ids = idsOf(SESSIONS[sessionId]);
+  const rank = (main, b) => (BACKUPS[main] ?? []).indexOf(b);
+  const mine = (b, other) => {
+    const r = rank(other, b);
+    return r < 0 || rank(exerciseId, b) < r || (rank(exerciseId, b) === r && ids.indexOf(exerciseId) < ids.indexOf(other));
+  };
+  return (BACKUPS[exerciseId] ?? []).filter((b) => !ids.includes(b) && ids.every((o) => o === exerciseId || mine(b, o)));
+}
+
+// [{ pair: да/нет, exercises: [{ id, sets, reps, weightKg, reason,
+//    alternatives, replaces? }] }]
 // currentId — id идущей тренировки (см. lastSets), если она уже начата.
+// Замена: как только в идущей тренировке записан подход запасного, место
+// занимает оно (replaces — чьё место), со своим весом и оставшимися
+// подходами. Отмена этого подхода возвращает основное — отдельной отметки
+// о замене в записях нет.
 export function planSession(store, sessionId, date, currentId = null) {
   const s = SESSIONS[sessionId];
   if (!s) throw new Error(`Неизвестная тренировка ${sessionId}`);
   const intro = inIntro(store, date);
+  const current = store.workouts.find((w) => w.id === currentId);
+  const done = (id) => (current ? current.sets.filter((x) => x.exercise === id).length : 0);
   const one = (e) => {
     const reps = Number.parseInt(e.reps, 10);
-    return {
-      id: e.id,
-      sets: intro && e.sets === 3 ? 2 : e.sets,
-      reps,
-      ...suggestWeight(store, e.id, reps, date, intro, currentId),
-    };
+    const sets = intro && e.sets === 3 ? 2 : e.sets;
+    const make = (id, n) => ({ id, sets: n, reps, ...suggestWeight(store, id, reps, date, intro, currentId) });
+    const left = Math.max(1, sets - done(e.id));
+    const alternatives = backupsFor(sessionId, e.id).map((id) => make(id, left));
+    const used = alternatives.find((a) => done(a.id) > 0);
+    return used ? { ...used, replaces: e.id, alternatives: [] } : { ...make(e.id, sets), alternatives };
   };
   return {
     sessionId, title: s.title, intro,
